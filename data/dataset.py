@@ -24,7 +24,7 @@ class SoundSegmentationDataset(data.Dataset):
         self.freq_bins = 256
         self.n_classes = 75
 
-        self.label_csv = pd.read_csv(filepath_or_buffer=root + "label.csv", sep=",", index_col=0)
+        self.label_csv = pd.read_csv(filepath_or_buffer=os.path.join(root, "label.csv"), sep=",", index_col=0)
         print(self.label_csv)
 
         if split == "train":

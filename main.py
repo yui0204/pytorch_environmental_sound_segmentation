@@ -18,40 +18,70 @@ np.random.seed(1234)
 
 
 def train(args): 
-    loader = SoundSegmentationDataset(data_path, split="train", task=task, spatial_type=spatial_type, mic_num=mic_num, angular_resolution=angular_resolution, input_dim=input_dim)
-    trainloader = DataLoader(loader, batch_size=args.batch_size, num_workers=4, shuffle=True)
+    train_dataset = SoundSegmentationDataset(data_path, split="train", task=task, spatial_type=spatial_type, mic_num=mic_num, angular_resolution=angular_resolution, input_dim=input_dim)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=4, shuffle=True)
+
+    val_dataset = SoundSegmentationDataset(data_path, split="val", task=task, spatial_type=spatial_type, mic_num=mic_num, angular_resolution=angular_resolution, input_dim=input_dim)
+    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, num_workers=4)
 
     model = FCN8s(n_classes=n_classes, input_dim=input_dim)
     print(model)
-
     model.cuda()
 
-    loss_function = nn.MSELoss()
+    criterion = nn.MSELoss()
     lr = args.lr
     optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=args.momentum, weight_decay=args.weight_decay)
-
+    
+    losses, val_losses = [], []
+    loss_temp, val_loss_temp = 0, 0
     print("Training start")
     for epoch in range(args.n_epoch):
-        for i, (images, labels) in tqdm(enumerate(trainloader)):
+        for i, (images, labels) in tqdm(enumerate(train_loader)):
             images = Variable(images.cuda())
             labels = Variable(labels.cuda())
-            optimizer.zero_grad()
+            
             outputs = model(images)
-            loss = loss_function(outputs, labels)
+            loss = criterion(outputs, labels)
+            loss_temp += loss.item()
+
+            optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
-            print(" Epoch: {}/{} Iteration: {}/{} Loss: {} lr:{}".format(epoch+1, args.n_epoch, i, len(trainloader), loss.item(), lr))
+            print(" Epoch: {}/{} Iteration: {}/{} Loss: {} lr:{}".format(epoch+1, args.n_epoch, i, len(train_loader), loss.item(), lr))
+
+        loss_temp = loss_temp / len(train_loader)
+        losses.append(loss_temp)
+        
+        model.eval()
+        with torch.no_grad():
+            for i, (images, labels) in tqdm(enumerate(val_loader)):
+                images = Variable(images.cuda())
+                labels = Variable(labels.cuda())
+                
+                outputs = model(images)
+                loss = criterion(outputs, labels)
+                val_loss_temp += loss.item()
+
+            print(" Epoch: {}/{} Iteration: {}/{} Val Loss: {} lr:{}".format(epoch+1, args.n_epoch, i, len(val_loader), loss.item(), lr))
+        
+        val_loss_temp = val_loss_temp / len(val_loader)
+        val_losses.append(loss.item())
 
         if epoch % 5 == 0:
             lr = lr * args.lr_decay
             for param_group in optimizer.param_groups:
-                param_group['lr'] = lr 
-        model.save()
+                param_group['lr'] = lr
+        
+        if if epoch > 1 and val_loss_temp < val_losses[-2]:
+            print("Best loss, model saved")
+            model.save()
+        loss_temp, val_loss_temp = 0, 0
+
 
 def val(args):
-    loader = SoundSegmentationDataset(data_path, split="val", task=task, spatial_type=spatial_type, mic_num=mic_num, angular_resolution=angular_resolution, input_dim=input_dim)
-    valloader = DataLoader(loader, batch_size=args.batch_size, num_workers=4)
+    val_dataset = SoundSegmentationDataset(data_path, split="val", task=task, spatial_type=spatial_type, mic_num=mic_num, angular_resolution=angular_resolution, input_dim=input_dim)
+    valloader = DataLoader(val_dataset, batch_size=args.batch_size, num_workers=4)
 
     model = FCN8s(n_classes=n_classes, input_dim=input_dim)
     model.load(args.model_path)
@@ -85,9 +115,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='FCN Hyperparams')
     
     # params for train phase
-    parser.add_argument('--n_epoch', type=int, default=2)
-    parser.add_argument('--batch_size', type=int, default=4)
-    parser.add_argument('--lr', type=float, default=1e-5)
+    parser.add_argument('--n_epoch', type=int, default=100)
+    parser.add_argument('--batch_size', type=int, default=16)
+    parser.add_argument('--lr', type=float, default=0.001)
     parser.add_argument('--lr_decay', type=float, default=0.95)
     parser.add_argument('--momentum', type=float, default=0.95)
     parser.add_argument('--weight_decay', type=float, default=5e-4)
@@ -98,7 +128,7 @@ if __name__ == '__main__':
 
     
 
-    data_path = '/home/yui-sudo/document/dataset/sound_segmentation/datasets/multi_segdata75_256_no_sound_random_sep_72/'
+    data_path = "/misc/export3/sudou/sound_data/datasets/multi_segdata75_256_-20dB_random_sep_72/"
 
     n_classes = 75#10
     task = "segmentation"
