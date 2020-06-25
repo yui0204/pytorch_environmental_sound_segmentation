@@ -7,7 +7,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 
-from model import FCN8s
+from model import FCN8s, UNet
 from data import SoundSegmentationDataset
 from utils import scores
 
@@ -24,7 +24,8 @@ def train(args):
     val_dataset = SoundSegmentationDataset(data_path, split="val", task=task, spatial_type=spatial_type, mic_num=mic_num, angular_resolution=angular_resolution, input_dim=input_dim)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, num_workers=4)
 
-    model = FCN8s(n_classes=n_classes, input_dim=input_dim)
+#    model = FCN8s(n_classes=n_classes, input_dim=input_dim)
+    model = UNet(n_classes=n_classes, input_dim=input_dim)
     print(model)
     model.cuda()
 
@@ -34,6 +35,7 @@ def train(args):
     
     losses, val_losses = [], []
     loss_temp, val_loss_temp = 0, 0
+    best_loss = 99999
     print("Training start")
     for epoch in range(args.n_epoch):
         for i, (images, labels) in tqdm(enumerate(train_loader)):
@@ -63,7 +65,7 @@ def train(args):
                 loss = criterion(outputs, labels)
                 val_loss_temp += loss.item()
 
-            print(" Epoch: {}/{} Iteration: {}/{} Val Loss: {} lr:{}".format(epoch+1, args.n_epoch, i, len(val_loader), loss.item(), lr))
+                print(" Epoch: {}/{} Iteration: {}/{} Val Loss: {} lr:{}".format(epoch+1, args.n_epoch, i, len(val_loader), loss.item(), lr))
         
         val_loss_temp = val_loss_temp / len(val_loader)
         val_losses.append(loss.item())
@@ -73,8 +75,9 @@ def train(args):
             for param_group in optimizer.param_groups:
                 param_group['lr'] = lr
         
-        if if epoch > 1 and val_loss_temp < val_losses[-2]:
+        if val_loss_temp < best_loss:
             print("Best loss, model saved")
+            best_loss = val_loss_temp
             model.save()
         loss_temp, val_loss_temp = 0, 0
 

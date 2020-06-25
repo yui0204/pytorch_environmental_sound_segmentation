@@ -103,6 +103,9 @@ class FCN8s(BasicModule):
         score3 = score3[:, :, 9:9+upscore4.size()[2], 9:9+upscore4.size()[3]].contiguous()
         score3 += upscore4
 
-        out = self.upscore(score3)
-        out = out[:, :, 31:31+x.size()[2], 31:31+x.size()[3]].contiguous()
+        mask = self.upscore(score3)
+        mask = mask[:, :, 31:31+x.size()[2], 31:31+x.size()[3]].contiguous()
+        mask = torch.sigmoid(mask)
+        out = torch.mul(x, mask)
+
         return out
