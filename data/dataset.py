@@ -7,7 +7,6 @@ import pandas as pd
 import cmath
 import re
 
-from tqdm import tqdm
 from torch.utils import data
 
 class SoundSegmentationDataset(data.Dataset):
@@ -25,7 +24,7 @@ class SoundSegmentationDataset(data.Dataset):
         self.n_classes = 75
 
         self.label_csv = pd.read_csv(filepath_or_buffer=os.path.join(root, "label.csv"), sep=",", index_col=0)
-        print(self.label_csv)
+        #print(self.label_csv)
 
         if split == "train":
             mode_dir = os.path.join(root, "train")
@@ -35,12 +34,18 @@ class SoundSegmentationDataset(data.Dataset):
             raise ValueError("undefined dataset")
 
         self.data_pair_folders = []
+        
         datapair_dirs = os.listdir(mode_dir)
         for datapair_dir in datapair_dirs:
             datapair_dir = os.path.join(mode_dir, datapair_dir)
             if os.path.isdir(datapair_dir):  
                 self.data_pair_folders.append(datapair_dir)
-
+        """
+        for i in range(200): # load 200 data
+            datapair_dir = os.path.join(mode_dir, str(i))
+            if os.path.isdir(datapair_dir):  
+                self.data_pair_folders.append(datapair_dir)
+        """
         
     def __len__(self):
         return len(self.data_pair_folders)
@@ -73,10 +78,7 @@ class SoundSegmentationDataset(data.Dataset):
             if filelist[n][-4:] == ".wav":
                 waveform, fs = sf.read(os.path.join(self.data_pair_folders[index], filelist[n]))
 
-                if self.mic_num == 1:
-                    _, _, stft = signal.stft(x=waveform, fs=fs, nperseg=512, return_onesided=False)
-                else:
-                    _, _, stft = signal.stft(x=waveform.T, fs=fs, nperseg=512, return_onesided=False)
+                _, _, stft = signal.stft(x=waveform.T, fs=fs, nperseg=512, return_onesided=False)
                 stft = stft[:, 1:len(stft.T) - 1]
 
                 if filelist[n][0:3] == "0__":
@@ -139,7 +141,7 @@ class SoundSegmentationDataset(data.Dataset):
         mixture = torch.from_numpy(mixture).float()
         label = torch.from_numpy(label).float()
         
-        return mixture, label#, mixture_phase
+        return mixture, label, mixture_phase
 
 
     def normalize(self, mixture, label):

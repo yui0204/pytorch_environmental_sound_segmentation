@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 import time
@@ -10,9 +11,8 @@ class BasicModule(nn.Module):
     def load(self, path):
         self.load_state_dict(torch.load(path))
 
-    def save(self, name=None):
-        if not name:
-            prefix = 'checkpoints/' + self.model_name + '_'
-            name = time.strftime(prefix + '%m%d_%H%M.pkl')
-        torch.save(self.state_dict(), name)
-        return name
+    def save(self, save_dir):
+        #filename = time.strftime('%m%d_' + self.model_name + '.pth')
+        filename = time.strftime(self.model_name + '.pth')
+        
+        torch.save(self.state_dict(), os.path.join(save_dir, filename))
