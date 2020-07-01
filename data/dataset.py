@@ -36,12 +36,14 @@ class SoundSegmentationDataset(data.Dataset):
         self.data_pair_folders = []
         
         datapair_dirs = os.listdir(mode_dir)
+        datapair_dirs.remove('make_toy_dataset4_multi.py')
+        datapair_dirs.sort(key=int)                                 # sort by folder number
         for datapair_dir in datapair_dirs:
             datapair_dir = os.path.join(mode_dir, datapair_dir)
             if os.path.isdir(datapair_dir):  
                 self.data_pair_folders.append(datapair_dir)
         """
-        for i in range(200): # load 200 data
+        for i in range(200): # for debug 
             datapair_dir = os.path.join(mode_dir, str(i))
             if os.path.isdir(datapair_dir):  
                 self.data_pair_folders.append(datapair_dir)
@@ -74,21 +76,22 @@ class SoundSegmentationDataset(data.Dataset):
 
         direction_index = 0
         filelist = os.listdir(self.data_pair_folders[index])
-        for n in range(len(filelist)):
-            if filelist[n][-4:] == ".wav":
-                waveform, fs = sf.read(os.path.join(self.data_pair_folders[index], filelist[n]))
+        for filename in filelist:
+            if filename[-4:] == ".wav" and not filename[:-4] == "BGM":
+                waveform, fs = sf.read(os.path.join(self.data_pair_folders[index], filename))
 
                 _, _, stft = signal.stft(x=waveform.T, fs=fs, nperseg=512, return_onesided=False)
-                stft = stft[:, 1:len(stft.T) - 1]
-
-                if filelist[n][0:3] == "0__":
+                
+                if filename[0:3] == "0__":
                     if self.mic_num == 1:
+                        stft = stft[:, 1:len(stft.T) - 1]
                         mixture_phase = np.angle(stft)
                         mixture = abs(stft[:256])
                         mixture = mixture[np.newaxis,:,:]
 
-                elif filelist[n][:7] == "0_multi":
+                elif filename[:7] == "0_multi": 
                     if self.mic_num == 8:
+                        stft = stft[:, :, 1:len(stft.T) - 1]
                         mixture_phase = np.angle(stft[0])
                         for nchan in range(self.mic_num):
                             if self.spatial_type == "ipd":
@@ -106,16 +109,14 @@ class SoundSegmentationDataset(data.Dataset):
                                 raise ValueError("Please use spatial feature when you use multi channel microphone array") 
 
                 else:
-                    if filelist[n][:-4] == "BGM":
-                        continue
-
+                    stft = stft[:, 1:len(stft.T) - 1]
                     if self.angular_resolution == 1:
                         if self.task == "sed":
-                            label[self.label_csv.T[filelist[n][:-4]][0]] += abs(stft[:256]).max(0)
+                            label[self.label_csv.T[filename[:-4]][0]] += abs(stft[:256]).max(0)
                             label[:,np.newaxis,:]
                         
                         elif self.task == "segmentation":
-                            label[self.label_csv.T[filelist[n][:-4]][0]] += abs(stft[:256])                        
+                            label[self.label_csv.T[filename[:-4]][0]] += abs(stft[:256])                        
                     
                     else:
                         angle = int(re.sub("\\D", "", direction[direction_index].split("_")[1])) // (360 // self.angular_resolution)
@@ -128,14 +129,16 @@ class SoundSegmentationDataset(data.Dataset):
                             label[angle] += abs(stft[:256])          
                         
                         elif self.task == "seld":
-                            label[self.label_csv.T[filelist[n][:-4]][0]][angle] += abs(stft[:256]).max(0)
+                            label[self.label_csv.T[filename[:-4]][0]][angle] += abs(stft[:256]).max(0)
                             label = ((label > 0.1) * 1)
                         
                         elif self.task == "cube":
-                            label[self.label_csv.T[filelist[n][:-4]][0]][angle] += abs(stft[:256])
-                            label = label.reshape((self.n_classes * self.angular_resolution, self.freq_bins, self.duration))
+                            label[self.label_csv.T[filename[:-4]][0]][angle] += abs(stft[:256])
                         direction_index += 1
-    
+                        
+        if self.task == "cube":
+            label = label.reshape((self.n_classes * self.angular_resolution, self.freq_bins, self.duration))
+                        
         mixture, label = self.normalize(mixture, label)
 
         mixture = torch.from_numpy(mixture).float()

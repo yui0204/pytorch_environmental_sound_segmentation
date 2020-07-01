@@ -2,8 +2,9 @@ import os
 import glob
 import numpy as np
 import cmath
-from .sound import WavfileOperate, Stft
 from mir_eval.separation import bss_eval_sources
+import soundfile as sf
+from scipy import signal
 
 
 def _pred_dir_make(no, save_dir):
@@ -25,7 +26,7 @@ def restore(Y_true, Y_pred, phase, no, save_dir, classes, ang_reso, label, datas
     sar_array = np.zeros((plot_num, 1))
 
     wavefile = glob.glob(data_dir + '/0__*.wav')
-    X_wave = WavfileOperate(wavefile[0]).wavedata.norm_sound            
+    X_wave, _ = sf.read(wavefile[0])
 
     for class_n in range(plot_num):
         if Y_true[no][class_n].max() > 0:
@@ -38,22 +39,22 @@ def restore(Y_true, Y_pred, phase, no, save_dir, classes, ang_reso, label, datas
                     Y_complex[i][j] = cmath.rect(Y_linear[i][j], phase[no][i][j])
 
             if ang_reso == 1:
-                Y_Stft = Stft(Y_complex, 16000, label.index[class_n]+"_prediction")
+                filename = label.index[class_n]+"_prediction.wav"
             else:
-                Y_Stft = Stft(Y_complex, 16000, label.index[i % ang_reso * 0] + "_" + str((360 // ang_reso) * (class_n % ang_reso)) + "deg_prediction")
+                filename = label.index[i % ang_reso * 0] + "_" + str((360 // ang_reso) * (class_n % ang_reso)) + "deg_prediction.wav"
                 
-            Y_pred_wave = Y_Stft.scipy_istft()
-            Y_pred_wave.write_wav_sf(dir=pred_dir, filename=None, bit=16)
+            _, Y_pred_wave = signal.istft(Zxx=Y_complex, fs=16000, nperseg=512, input_onesided=False)
+            Y_pred_wave = Y_pred_wave.real
+            sf.write(pred_dir + "/" + filename, Y_pred_wave.real, 16000, subtype="PCM_16")
 
             # calculate SDR
-            Y_pred_wave = Y_pred_wave.norm_sound
-            Y_true_wave = WavfileOperate(data_dir + "/" + label.index[class_n] + ".wav").wavedata.norm_sound            
+            Y_true_wave, _ = sf.read(data_dir + "/" + label.index[class_n] + ".wav")
             Y_true_wave = Y_true_wave[:len(Y_pred_wave)]
             X_wave = X_wave[:len(Y_pred_wave)]
-            
-            sdr_base, sir_base, sar_base, per_base = bss_eval_sources(Y_true_wave[np.newaxis,:], X_wave[np.newaxis,:], compute_permutation=True)
-            sdr, sir, sar, per = bss_eval_sources(Y_true_wave[np.newaxis,:], Y_pred_wave[np.newaxis,:], compute_permutation=True)
-            print("No.", no, class_n, label.index[class_n], round(sdr[0], 2), round(sdr_base[0], 2), "SDR improvement: ", round(sdr[0] - sdr_base[0], 2))
+
+            sdr_base, sir_base, sar_base, per_base = bss_eval_sources(Y_true_wave[np.newaxis,:], X_wave[np.newaxis,:], compute_permutation=False)
+            sdr, sir, sar, per = bss_eval_sources(Y_true_wave[np.newaxis,:], Y_pred_wave[np.newaxis,:], compute_permutation=False)
+            print("No.", no, "Class", class_n, label.index[class_n], "SDR", round(sdr[0], 2), "SDR_Base", round(sdr_base[0], 2), "SDR improvement: ", round(sdr[0] - sdr_base[0], 2))
             
             sdr_array[class_n] = sdr
             sir_array[class_n] = sir

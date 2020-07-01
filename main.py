@@ -9,7 +9,7 @@ from torch import nn
 from torch import optim
 from torch.utils.data import DataLoader
 
-from model import read_model, FCN8s, UNet
+from model import read_model, FCN8s, UNet, CRNN, Deeplabv3plus
 from data import SoundSegmentationDataset
 from utils import scores, rmse, save_score_array
 from utils import plot_loss, plot_mixture_stft, plot_class_stft
@@ -24,9 +24,9 @@ def train():
     train_loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=4, shuffle=True)
 
     val_dataset = SoundSegmentationDataset(dataset_dir, split="val", task=task, spatial_type=spatial_type, mic_num=mic_num, angular_resolution=angular_resolution, input_dim=input_dim)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=4)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=4, shuffle=False)
 
-    model = read_model(model_name, n_classes=n_classes, input_dim=input_dim)
+    model = read_model(model_name, n_classes=n_classes, angular_resolution=angular_resolution, input_dim=input_dim)
 
     criterion = nn.MSELoss()
     #optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
@@ -46,6 +46,7 @@ def train():
             labels = labels.cuda()
             
             outputs = model(images)
+                
             loss = criterion(outputs, labels)
             loss_temp += loss.item()
 
@@ -87,9 +88,9 @@ def train():
 
 def val():
     val_dataset = SoundSegmentationDataset(dataset_dir, split="val", task=task, spatial_type=spatial_type, mic_num=mic_num, angular_resolution=angular_resolution, input_dim=input_dim)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=4)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=4, shuffle=False)
 
-    model = read_model(model_name, n_classes=n_classes, input_dim=input_dim)
+    model = read_model(model_name, n_classes=n_classes, angular_resolution=angular_resolution, input_dim=input_dim)
     weight_name = model_name + ".pth"
     model.load(os.path.join(save_dir, weight_name))
 
@@ -128,7 +129,7 @@ def val():
 if __name__ == '__main__':
     # params for train phase
     epochs = 100
-    batch_size = 128
+    batch_size = 16
     lr = 0.001
     lr_decay = 0.95
     momentum = 0.95
@@ -141,19 +142,21 @@ if __name__ == '__main__':
     n_classes = 75#10
     label_csv = pd.read_csv(filepath_or_buffer=os.path.join(dataset_dir, "label.csv"), sep=",", index_col=0)
 
-    task = "segmentation"
-    model_name = "UNet"
+    task = "cube" # "sed", "segmentation", "ssl", "ssls", "cube"
+    model_name = "Deeplabv3plus"
 
     # make save_directory
-    dirname = time.strftime('%m%d_' + model_name)
+    date = time.strftime('%Y_%m%d')
+    #date = "0626"
+    dirname = date + "_" + model_name
     save_dir = os.path.join('results', dataset_name, dirname)    
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
     # sptatial feature type (None, IPD, complex)
-    spatial_type = None
-    mic_num = 1
-    angular_resolution = 1
+    spatial_type = "ipd"
+    mic_num = 8
+    angular_resolution = 72
     if mic_num == 1:
         input_dim = 1
     elif spatial_type == "ipd":
