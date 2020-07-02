@@ -139,16 +139,16 @@ if __name__ == '__main__':
     root = "/misc/export3/sudou/sound_data/datasets/"
     dataset_name = "multi_segdata75_256_-20dB_random_sep_72/"
     dataset_dir = root + dataset_name
-    n_classes = 75#10
+    n_classes = 1#10
     label_csv = pd.read_csv(filepath_or_buffer=os.path.join(dataset_dir, "label.csv"), sep=",", index_col=0)
 
-    task = "cube" # "sed", "segmentation", "ssl", "ssls", "cube"
+    task = "ssls" # "sed", "segmentation", "ssl", "ssls", "cube"
     model_name = "Deeplabv3plus"
 
     # make save_directory
     date = time.strftime('%Y_%m%d')
     #date = "0626"
-    dirname = date + "_" + model_name
+    dirname = date + "_"  + task + "_" + model_name
     save_dir = os.path.join('results', dataset_name, dirname)    
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
