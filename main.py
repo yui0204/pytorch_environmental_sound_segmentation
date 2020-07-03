@@ -116,8 +116,8 @@ def val():
             preds = np.concatenate((preds, pred), axis=0)
             gts = np.concatenate((gts, gt), axis=0)
 
-        #scores_array = rmse(gts[1:], preds[1:], classes=n_classes)
-        #save_score_array(scores_array, save_dir)
+        scores_array = rmse(gts[1:], preds[1:], classes=n_classes)
+        save_score_array(scores_array, save_dir)
     
     for n in range(len(preds)):
         if n < 10:
@@ -136,11 +136,12 @@ if __name__ == '__main__':
     weight_decay = 5e-4
     
     # dataset
+    n_classes = 75
+
     root = "/misc/export3/sudou/sound_data/datasets/"
-    dataset_name = "multi_segdata75_256_-20dB_random_sep/"
-    #dataset_name = "multi_segdata3_256_-20dB_random_sep/"
+    dataset_name = "multi_segdata" + str(n_classes) + "75_256_-20dB_random_sep/"
     dataset_dir = root + dataset_name
-    n_classes = 75#10
+    
     label_csv = pd.read_csv(filepath_or_buffer=os.path.join(dataset_dir, "label.csv"), sep=",", index_col=0)
 
     task = "cube" # "sed", "segmentation", "ssl", "ssls", "cube"

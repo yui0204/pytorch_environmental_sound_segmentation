@@ -42,7 +42,7 @@ def restore(Y_true, Y_pred, phase, no, save_dir, classes, ang_reso, label, datas
             if ang_reso == 1:
                 filename = label.index[index_num]+"_prediction.wav"
             else:
-                filename = label.index[i % ang_reso * 0] + "_" + str((360 // ang_reso) * (index_num % ang_reso)) + "deg_prediction.wav"
+                filename = label.index[index_num % ang_reso] + "_" + str((360 // ang_reso) * (index_num % ang_reso)) + "deg_prediction.wav"
                 
             _, Y_pred_wave = signal.istft(Zxx=Y_complex, fs=16000, nperseg=512, input_onesided=False)
             Y_pred_wave = Y_pred_wave.real
@@ -64,7 +64,7 @@ def restore(Y_true, Y_pred, phase, no, save_dir, classes, ang_reso, label, datas
 
             sdr_base, sir_base, sar_base, per_base = bss_eval_sources(Y_true_wave[np.newaxis,:], X_wave[np.newaxis,:], compute_permutation=False)
             sdr, sir, sar, per = bss_eval_sources(Y_true_wave[np.newaxis,:], Y_pred_wave[np.newaxis,:], compute_permutation=False)
-            print("No.", no, "Class", index_num, label.index[index_num], "SDR", round(sdr[0], 2), "SDR_Base", round(sdr_base[0], 2), "SDR improvement: ", round(sdr[0] - sdr_base[0], 2))
+            print("No.", no, "Class", index_num, label.index[index_num // ang_reso], "SDR", round(sdr[0], 2), "SDR_Base", round(sdr_base[0], 2), "SDR improvement: ", round(sdr[0] - sdr_base[0], 2))
             
             sdr_array[index_num] = sdr
             sir_array[index_num] = sir
