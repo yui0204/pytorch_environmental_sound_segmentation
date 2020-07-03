@@ -8,6 +8,7 @@ import torch
 from torch import nn 
 from torch import optim
 from torch.utils.data import DataLoader
+from torch.backends import cudnn
 
 from model import read_model, FCN8s, UNet, CRNN, Deeplabv3plus
 from data import SoundSegmentationDataset
@@ -27,6 +28,10 @@ def train():
     val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=4, shuffle=False)
 
     model = read_model(model_name, n_classes=n_classes, angular_resolution=angular_resolution, input_dim=input_dim)
+    
+    #model = torch.nn.DataParallel(model) # make parallel
+    #cudnn.deterministic = True
+    #cudnn.benchmark = True
 
     criterion = nn.MSELoss()
     #optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
@@ -129,7 +134,7 @@ def val():
 if __name__ == '__main__':
     # params for train phase
     epochs = 100
-    batch_size = 16
+    batch_size = 32
     lr = 0.001
     lr_decay = 0.95
     momentum = 0.95
@@ -137,9 +142,8 @@ if __name__ == '__main__':
     
     # dataset
     n_classes = 75
-
     root = "/misc/export3/sudou/sound_data/datasets/"
-    dataset_name = "multi_segdata" + str(n_classes) + "75_256_-20dB_random_sep/"
+    dataset_name = "multi_segdata" + str(n_classes) + "_256_-20dB_random_sep/"
     dataset_dir = root + dataset_name
     
     label_csv = pd.read_csv(filepath_or_buffer=os.path.join(dataset_dir, "label.csv"), sep=",", index_col=0)
@@ -149,7 +153,7 @@ if __name__ == '__main__':
 
     # make save_directory
     date = time.strftime('%Y_%m%d')
-    #date = "2020_0702"
+    #date = "2020_0703"
     dirname = date + "_"  + task + "_" + model_name
     save_dir = os.path.join('results', dataset_name, dirname)    
     if not os.path.exists(save_dir):
