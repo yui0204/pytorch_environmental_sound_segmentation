@@ -10,7 +10,7 @@ import re
 from torch.utils import data
 
 class SoundSegmentationDataset(data.Dataset):
-    def __init__(self, root, split="train", task="segmentation", spatial_type=None, mic_num=1, angular_resolution=1, input_dim=1):
+    def __init__(self, root, split="train", task="segmentation", n_classes=75, spatial_type=None, mic_num=1, angular_resolution=1, input_dim=1):
         self.split = split
         self.task = task
 
@@ -21,7 +21,7 @@ class SoundSegmentationDataset(data.Dataset):
 
         self.duration = 256
         self.freq_bins = 256
-        self.n_classes = 75
+        self.n_classes = n_classes
 
         self.label_csv = pd.read_csv(filepath_or_buffer=os.path.join(root, "label.csv"), sep=",", index_col=0)
         #print(self.label_csv)
@@ -135,7 +135,7 @@ class SoundSegmentationDataset(data.Dataset):
                         elif self.task == "cube":
                             label[self.label_csv.T[filename[:-4]][0]][angle] += abs(stft[:256])
                         direction_index += 1
-                        
+
         if self.task == "cube":
             label = label.reshape((self.n_classes * self.angular_resolution, self.freq_bins, self.duration))
                         

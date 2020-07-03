@@ -20,10 +20,10 @@ np.random.seed(1234)
 
 
 def train(): 
-    train_dataset = SoundSegmentationDataset(dataset_dir, split="train", task=task, spatial_type=spatial_type, mic_num=mic_num, angular_resolution=angular_resolution, input_dim=input_dim)
+    train_dataset = SoundSegmentationDataset(dataset_dir, split="train", task=task, n_classes=n_classes, spatial_type=spatial_type, mic_num=mic_num, angular_resolution=angular_resolution, input_dim=input_dim)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=4, shuffle=True)
 
-    val_dataset = SoundSegmentationDataset(dataset_dir, split="val", task=task, spatial_type=spatial_type, mic_num=mic_num, angular_resolution=angular_resolution, input_dim=input_dim)
+    val_dataset = SoundSegmentationDataset(dataset_dir, split="val", task=task, n_classes=n_classes, spatial_type=spatial_type, mic_num=mic_num, angular_resolution=angular_resolution, input_dim=input_dim)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=4, shuffle=False)
 
     model = read_model(model_name, n_classes=n_classes, angular_resolution=angular_resolution, input_dim=input_dim)
@@ -87,7 +87,7 @@ def train():
 
 
 def val():
-    val_dataset = SoundSegmentationDataset(dataset_dir, split="val", task=task, spatial_type=spatial_type, mic_num=mic_num, angular_resolution=angular_resolution, input_dim=input_dim)
+    val_dataset = SoundSegmentationDataset(dataset_dir, split="val", task=task, n_classes=n_classes, spatial_type=spatial_type, mic_num=mic_num, angular_resolution=angular_resolution, input_dim=input_dim)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=4, shuffle=False)
 
     model = read_model(model_name, n_classes=n_classes, angular_resolution=angular_resolution, input_dim=input_dim)
@@ -99,7 +99,7 @@ def val():
     model.eval()
     X_ins = np.zeros((1, input_dim, 256, 256))
     phases = np.zeros((1, 512, 256))
-    gts, preds = np.zeros((1, n_classes, 256, 256)), np.zeros((1, n_classes, 256, 256))
+    gts, preds = np.zeros((1, n_classes * angular_resolution, 256, 256)), np.zeros((1, n_classes * angular_resolution, 256, 256))
     with torch.no_grad():
         for i, (images, labels, phase) in tqdm(enumerate(val_loader)):
             images = images.cuda()
@@ -116,8 +116,8 @@ def val():
             preds = np.concatenate((preds, pred), axis=0)
             gts = np.concatenate((gts, gt), axis=0)
 
-        scores_array = rmse(gts[1:], preds[1:], classes=n_classes)
-        save_score_array(scores_array, save_dir)
+        #scores_array = rmse(gts[1:], preds[1:], classes=n_classes)
+        #save_score_array(scores_array, save_dir)
     
     for n in range(len(preds)):
         if n < 10:
@@ -137,17 +137,18 @@ if __name__ == '__main__':
     
     # dataset
     root = "/misc/export3/sudou/sound_data/datasets/"
-    dataset_name = "multi_segdata75_256_-20dB_random_sep_72/"
+    dataset_name = "multi_segdata75_256_-20dB_random_sep/"
+    #dataset_name = "multi_segdata3_256_-20dB_random_sep/"
     dataset_dir = root + dataset_name
-    n_classes = 1#10
+    n_classes = 75#10
     label_csv = pd.read_csv(filepath_or_buffer=os.path.join(dataset_dir, "label.csv"), sep=",", index_col=0)
 
-    task = "ssls" # "sed", "segmentation", "ssl", "ssls", "cube"
+    task = "cube" # "sed", "segmentation", "ssl", "ssls", "cube"
     model_name = "Deeplabv3plus"
 
     # make save_directory
     date = time.strftime('%Y_%m%d')
-    #date = "0626"
+    #date = "2020_0702"
     dirname = date + "_"  + task + "_" + model_name
     save_dir = os.path.join('results', dataset_name, dirname)    
     if not os.path.exists(save_dir):
@@ -156,7 +157,7 @@ if __name__ == '__main__':
     # sptatial feature type (None, IPD, complex)
     spatial_type = "ipd"
     mic_num = 8
-    angular_resolution = 72
+    angular_resolution = 8
     if mic_num == 1:
         input_dim = 1
     elif spatial_type == "ipd":
