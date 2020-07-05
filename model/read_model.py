@@ -8,7 +8,7 @@ def read_model(model_name, n_classes, angular_resolution, input_dim):
     elif model_name == "CRNN":
         model = CRNN(n_classes=n_classes, angular_resolution=angular_resolution, input_dim=input_dim)
     elif model_name == "Deeplabv3plus":
-        model = Deeplabv3plus(nInputChannels=input_dim, n_classes=n_classes, angular_resolution=angular_resolution, os=16, pretrained=False, _print=False)
+        model = Deeplabv3plus(nInputChannels=input_dim, n_classes=n_classes, angular_resolution=angular_resolution, os=16, _print=False)
     
     #print(model)
         

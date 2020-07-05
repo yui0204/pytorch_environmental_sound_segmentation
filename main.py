@@ -28,7 +28,9 @@ def train():
     val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=4, shuffle=False)
 
     model = read_model(model_name, n_classes=n_classes, angular_resolution=angular_resolution, input_dim=input_dim)
-    
+
+    #model.load(os.path.join('results', dataset_name, "2020_0703" + "_"  + task + "_" + model_name, model_name + ".pth"))    
+
     #model = torch.nn.DataParallel(model) # make parallel
     #cudnn.deterministic = True
     #cudnn.benchmark = True
@@ -62,7 +64,7 @@ def train():
         loss_temp = loss_temp / len(train_loader)
         losses.append(loss_temp)
         
-        print("Train Epoch: {}/{}  Loss: {:.4f} lr: {:.6}".format(epoch+1, epochs, loss_temp, lr_scheduler.get_lr()[0]))
+        print("Train Epoch: {}/{}  Loss: {:.6f} lr: {:.6f}".format(epoch+1, epochs, loss_temp, lr_scheduler.get_lr()[0]))
 
         # Validation per 1 epoch
         model.eval()
@@ -78,7 +80,7 @@ def train():
         val_loss_temp = val_loss_temp / len(val_loader)
         val_losses.append(loss.item())
 
-        print("Validation Epoch: {}/{}  Loss: {:.4f}".format(epoch+1, epochs, val_loss_temp))        
+        print("Validation Epoch: {}/{}  Loss: {:.6f}".format(epoch+1, epochs, val_loss_temp))
 
         lr_scheduler.step()
         
@@ -88,7 +90,7 @@ def train():
             model.save(save_dir=save_dir)
         loss_temp, val_loss_temp = 0, 0
     
-    plot_loss(losses, val_losses, save_dir)
+        plot_loss(losses, val_losses, save_dir)
 
 
 def val():
@@ -96,8 +98,7 @@ def val():
     val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=4, shuffle=False)
 
     model = read_model(model_name, n_classes=n_classes, angular_resolution=angular_resolution, input_dim=input_dim)
-    weight_name = model_name + ".pth"
-    model.load(os.path.join(save_dir, weight_name))
+    model.load(os.path.join(save_dir, model_name + ".pth"))
 
     model.cuda()
     print("Evaluation start")
@@ -121,6 +122,9 @@ def val():
             preds = np.concatenate((preds, pred), axis=0)
             gts = np.concatenate((gts, gt), axis=0)
 
+            if task == "cube" and n_classes == 75 and i > 10:
+                break
+            
         scores_array = rmse(gts[1:], preds[1:], classes=n_classes)
         save_score_array(scores_array, save_dir)
     
@@ -134,7 +138,7 @@ def val():
 if __name__ == '__main__':
     # params for train phase
     epochs = 100
-    batch_size = 32
+    batch_size = 16
     lr = 0.001
     lr_decay = 0.95
     momentum = 0.95

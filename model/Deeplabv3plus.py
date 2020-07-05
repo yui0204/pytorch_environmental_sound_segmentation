@@ -105,7 +105,7 @@ class Xception(nn.Module):
     """
     Modified Alighed Xception
     """
-    def __init__(self, inplanes=3, os=16, pretrained=False):
+    def __init__(self, inplanes=3, os=16):
         super(Xception, self).__init__()
 
         if os == 16:
@@ -167,9 +167,6 @@ class Xception(nn.Module):
         # Init weights
         self.__init_weight()
 
-        # Load pretrained model
-        if pretrained:
-            self.__load_xception_pretrained()
 
     def forward(self, x):
         # Entry flow
@@ -230,33 +227,6 @@ class Xception(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-    def __load_xception_pretrained(self):
-        pretrain_dict = model_zoo.load_url('http://data.lip6.fr/cadene/pretrainedmodels/xception-b5690688.pth')
-        model_dict = {}
-        state_dict = self.state_dict()
-
-        for k, v in pretrain_dict.items():
-            print(k)
-            if k in state_dict:
-                if 'pointwise' in k:
-                    v = v.unsqueeze(-1).unsqueeze(-1)
-                if k.startswith('block12'):
-                    model_dict[k.replace('block12', 'block20')] = v
-                elif k.startswith('block11'):
-                    model_dict[k.replace('block11', 'block12')] = v
-                elif k.startswith('conv3'):
-                    model_dict[k] = v
-                elif k.startswith('bn3'):
-                    model_dict[k] = v
-                    model_dict[k.replace('bn3', 'bn4')] = v
-                elif k.startswith('conv4'):
-                    model_dict[k.replace('conv4', 'conv5')] = v
-                elif k.startswith('bn4'):
-                    model_dict[k.replace('bn4', 'bn5')] = v
-                else:
-                    model_dict[k] = v
-        state_dict.update(model_dict)
-        self.load_state_dict(state_dict)
 
 class ASPP_module(nn.Module):
     def __init__(self, inplanes, planes, rate):
@@ -292,7 +262,7 @@ class ASPP_module(nn.Module):
 
 
 class Deeplabv3plus(BasicModule):
-    def __init__(self, nInputChannels=1, n_classes=75, angular_resolution=1, os=16, pretrained=False, _print=True):
+    def __init__(self, nInputChannels=1, n_classes=75, angular_resolution=1, os=16, _print=True):
         if _print:
             print("Constructing DeepLabv3+ model...")
             print("Number of classes: {}".format(n_classes))
@@ -303,7 +273,7 @@ class Deeplabv3plus(BasicModule):
         self.model_name = 'Deeplabv3plus'
 
         # Atrous Conv
-        self.xception_features = Xception(nInputChannels, os, pretrained)
+        self.xception_features = Xception(nInputChannels, os)
 
         # ASPP
         if os == 16:
@@ -417,7 +387,7 @@ def get_10x_lr_params(model):
 
 
 if __name__ == "__main__":
-    model = Deeplabv3plus(nInputChannels=3, n_classes=21, os=16, pretrained=True, _print=True)
+    model = Deeplabv3plus(nInputChannels=3, n_classes=21, os=16, _print=True)
     model.eval()
     image = torch.randn(1, 3, 512, 512)
     with torch.no_grad():
