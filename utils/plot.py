@@ -47,7 +47,7 @@ def plot_class_stft(Y_true, Y_pred, no, save_dir, classes, ang_reso, label):
     Y_true_total = np.zeros(Y_true[0][0].shape)
     Y_pred_total = np.zeros(Y_pred[0][0].shape)
     for i in range(plot_num):
-        if Y_true[no][i].max() > 0: 
+        if Y_true[no][i].max() >= 0: 
             plt.pcolormesh((Y_true[no][i]))
             if ang_reso == 1:
                 plt.title(label.index[i] + "_truth")

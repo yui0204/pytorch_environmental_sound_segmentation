@@ -1,5 +1,6 @@
 import os 
 import time
+import shutil
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
@@ -13,7 +14,7 @@ from torch.backends import cudnn
 from model import read_model, FCN8s, UNet, CRNN, Deeplabv3plus
 from data import SoundSegmentationDataset
 from utils import scores, rmse, save_score_array
-from utils import plot_loss, plot_mixture_stft, plot_class_stft
+from utils import plot_loss, plot_mixture_stft, plot_class_stft, CustomMSE
 from utils import restore
 
 torch.manual_seed(1234)
@@ -35,7 +36,8 @@ def train():
     #cudnn.deterministic = True
     #cudnn.benchmark = True
 
-    criterion = nn.MSELoss()
+    #criterion = nn.MSELoss()
+    criterion = CustomMSE()
     #optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
     optimizer = optim.Adam(model.parameters(), lr=lr)
     lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.95)
@@ -53,8 +55,9 @@ def train():
             labels = labels.cuda()
             
             outputs = model(images)
-                
+            
             loss = criterion(outputs, labels)
+
             loss_temp += loss.item()
 
             optimizer.zero_grad()
@@ -91,6 +94,13 @@ def train():
         loss_temp, val_loss_temp = 0, 0
     
         plot_loss(losses, val_losses, save_dir)
+
+        shutil.copy("main.py", save_dir)
+        #shutil.copy("Unet.py", save_dir)
+        #shutil.copy("Deeplab.py", save_dir)
+        #shutil.copy("CNN.py", save_dir)    
+        if os.path.exists(os.getcwd() + "/nohup.out"):
+            shutil.copy("nohup.out", save_dir)
 
 
 def val():
@@ -138,7 +148,7 @@ def val():
 if __name__ == '__main__':
     # params for train phase
     epochs = 100
-    batch_size = 16
+    batch_size = 12
     lr = 0.001
     lr_decay = 0.95
     momentum = 0.95
@@ -147,7 +157,7 @@ if __name__ == '__main__':
     # dataset
     n_classes = 75
     root = "/misc/export3/sudou/sound_data/datasets/"
-    dataset_name = "multi_segdata" + str(n_classes) + "_256_-20dB_random_sep/"
+    dataset_name = "multi_segdata" + str(n_classes) + "_256_-20dB_random_sep_72/"
     dataset_dir = root + dataset_name
     
     label_csv = pd.read_csv(filepath_or_buffer=os.path.join(dataset_dir, "label.csv"), sep=",", index_col=0)
@@ -157,7 +167,6 @@ if __name__ == '__main__':
 
     # make save_directory
     date = time.strftime('%Y_%m%d')
-    #date = "2020_0703"
     dirname = date + "_"  + task + "_" + model_name
     save_dir = os.path.join('results', dataset_name, dirname)    
     if not os.path.exists(save_dir):
