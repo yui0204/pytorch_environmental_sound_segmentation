@@ -49,8 +49,8 @@ class CRNN(BasicModule):
         )
 
         self.gru_block = nn.Sequential(
-            #nn.GRU(512, 512, 2, bidirectional=False),
-            nn.LSTM(512, 512, 2, bidirectional=False),
+            nn.GRU(512, 512, 2, bidirectional=False),
+            #nn.LSTM(512, 512, 2, bidirectional=False),
         )
 
         

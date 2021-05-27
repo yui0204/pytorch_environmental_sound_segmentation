@@ -113,8 +113,9 @@ class SoundSegmentationDataset(data.Dataset):
                     if self.angular_resolution == 1:
                         if self.task == "sed":
                             label[self.label_csv.T[filename[:-4]][0]] += abs(stft[:256]).max(0)
+                            label = ((label > 0.1) * 1.0)
                             label[:,np.newaxis,:]
-                        
+                            
                         elif self.task == "segmentation":
                             label[self.label_csv.T[filename[:-4]][0]] += abs(stft[:256])                        
                     
@@ -122,7 +123,7 @@ class SoundSegmentationDataset(data.Dataset):
                         angle = int(re.sub("\\D", "", direction[direction_index].split("_")[1])) // (360 // self.angular_resolution)
                         if self.task == "ssl":
                             label[angle] += abs(stft[:256]).max(0)
-                            label = ((label > 0.1) * 1)
+                            label = ((label > 0.1) * 1.0)
                             label = label[:,np.newaxis,:]
                         
                         elif self.task == "ssls":
@@ -130,7 +131,7 @@ class SoundSegmentationDataset(data.Dataset):
                         
                         elif self.task == "seld":
                             label[self.label_csv.T[filename[:-4]][0]][angle] += abs(stft[:256]).max(0)
-                            label = ((label > 0.1) * 1)
+                            label = ((label > 0.1) * 1.0)
                         
                         elif self.task == "cube":
                             label[self.label_csv.T[filename[:-4]][0]][angle] += abs(stft[:256])
