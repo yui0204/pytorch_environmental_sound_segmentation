@@ -114,7 +114,7 @@ class SoundSegmentationDataset(data.Dataset):
                         if self.task == "sed":
                             label[self.label_csv.T[filename[:-4]][0]] += abs(stft[:256]).max(0)
                             label = ((label > 0.1) * 1.0)
-                            label[:,np.newaxis,:]
+                            #label[:,np.newaxis,:]
                             
                         elif self.task == "segmentation":
                             label[self.label_csv.T[filename[:-4]][0]] += abs(stft[:256])                        

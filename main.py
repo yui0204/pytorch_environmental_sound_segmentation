@@ -14,7 +14,7 @@ from torch.backends import cudnn
 from model import read_model, FCN8s, UNet, CRNN, Deeplabv3plus
 from data import SoundSegmentationDataset
 from utils import scores, rmse, save_score_array
-from utils import plot_loss, plot_mixture_stft, plot_class_stft, CustomMSE
+from utils import plot_loss, plot_mixture_stft, plot_event, plot_class_stft, CustomMSE
 from utils import restore
 
 from sklearn.metrics import f1_score
@@ -149,10 +149,12 @@ def val():
             
     if task == "sed" or task == "ssl" or task == "seld":
         preds = (preds > 0.5) * 1
-        f1 = f1_score(gts[1:]ravel(), preds[1:].ravel())
+        #print(gts.shape, preds.shape)
+        #print(gts[1:].ravel().shape, preds[1:].ravel().shape)
+        f1 = f1_score(gts[1:].ravel(), preds[1:].ravel())
         print("F_score", f1)
         with open(save_dir + "f1_" + str(f1) + ".txt","w") as f:
-            f.write(str(f1))   
+            f.write(str(f1))
 
     elif task == "segmentation" or task == "ssls" or task == "cube":
         scores_array = rmse(gts[1:], preds[1:], classes=n_classes)
@@ -171,7 +173,7 @@ def val():
 
 if __name__ == '__main__':
     # params for train phase
-    epochs = 10#100
+    epochs = 5#100
     batch_size = 64
     lr = 0.001
     lr_decay = 0.95
