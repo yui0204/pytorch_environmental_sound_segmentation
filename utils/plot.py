@@ -33,27 +33,27 @@ def plot_event(Y_true, Y_pred, no, save_dir, classes, ang_reso, label):
         ylabel = "class index"
 
     if ang_reso == 1 or classes == 1:
-        plt.pcolormesh((Y_true[no][0].T))
+        plt.pcolormesh((Y_true[no]))
         plt.title("truth")
         plt.xlabel("time")
         plt.ylabel(ylabel)
         plt.clim(0, 1)
         plt.colorbar()
-        plt.savefig(pred_dir + "true.png")
+        plt.savefig(pred_dir + "/true.png")
         plt.close()
         
-        plt.pcolormesh((Y_pred[no][0].T))
+        plt.pcolormesh((Y_pred[no]))
         plt.title("prediction")
         plt.xlabel("time")
         plt.ylabel(ylabel)
         plt.clim(0, 1)
         plt.colorbar()
-        plt.savefig(pred_dir + "pred.png")    
+        plt.savefig(pred_dir + "/pred.png")    
         plt.close()
     
     else: # SELD        
-        Y_true_total = np.zeros(Y_true[0][0].shape)
-        Y_pred_total = np.zeros(Y_pred[0][0].shape)
+        Y_true_total = np.zeros(Y_true[0].shape)
+        Y_pred_total = np.zeros(Y_pred[0].shape)
         for i in range(classes):
             if Y_true[no][i].max() > 0:
                 
@@ -63,7 +63,7 @@ def plot_event(Y_true, Y_pred, no, save_dir, classes, ang_reso, label):
                 plt.ylabel('angle')
                 plt.clim(0, 1)
                 plt.colorbar()
-                plt.savefig(pred_dir + label.index[i] + "_true.png")
+                plt.savefig(pred_dir + "/" + label.index[i] + "_true.png")
                 plt.close()
     
                 plt.pcolormesh((Y_pred[no][i]))
@@ -72,7 +72,7 @@ def plot_event(Y_true, Y_pred, no, save_dir, classes, ang_reso, label):
                 plt.ylabel('angle')
                 plt.clim(0, 1)
                 plt.colorbar()
-                plt.savefig(pred_dir + label.index[i] + "_pred.png")
+                plt.savefig(pred_dir + "/" + label.index[i] + "_pred.png")
                 plt.close()
                 
             Y_true_total += (Y_true[no][i] > 0.45) * (i + 4)
@@ -83,7 +83,7 @@ def plot_event(Y_true, Y_pred, no, save_dir, classes, ang_reso, label):
         plt.xlabel("time")
         plt.ylabel('angle')
         plt.clim(0, Y_true_total.max())
-        plt.savefig(pred_dir + "color_truth.png")
+        plt.savefig(pred_dir + "/color_truth.png")
         plt.close()
     
         plt.pcolormesh((Y_pred_total), cmap="gist_ncar")
@@ -91,7 +91,7 @@ def plot_event(Y_true, Y_pred, no, save_dir, classes, ang_reso, label):
         plt.xlabel("time")
         plt.ylabel('angle')
         plt.clim(0, Y_true_total.max())
-        plt.savefig(pred_dir + "color_pred.png")
+        plt.savefig(pred_dir + "/olor_pred.png")
         plt.close()
 
         

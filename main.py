@@ -38,12 +38,15 @@ def train():
     #cudnn.deterministic = True
     #cudnn.benchmark = True
 
-    criterion = nn.BCELoss()
-    #criterion = nn.MSELoss()
-    #criterion = CustomMSE()
     
-    optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
-    #optimizer = optim.Adam(model.parameters(), lr=lr)
+    if task == "sed" or task == "ssl" or task == "seld":
+        criterion = nn.BCELoss()
+    elif task == "segmentation" or task == "ssls" or task == "cube":
+        criterion = nn.MSELoss()
+        #criterion = CustomMSE()
+    
+    #optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
+    optimizer = optim.Adam(model.parameters(), lr=lr)
     lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.95)
     
     losses, val_losses = [], []
@@ -59,15 +62,16 @@ def train():
             labels = labels.cuda()
             
             outputs = model(images)
-            #print(torch.sum(outputs, dim=2, keepdim=True).size(), (torch.sum(labels, dim=2, keepdim=True) > 0.2).size())
 
-            #torch.sum(labels, dim=2, keepdim=True) > 0.2).to(torch.float32)
+            ########## weakly supervised ssls #####################
+            if label_type == "weakly":
+                weak_labels = (labels > 0.0).to(torch.float32)
+                weak_labels = torch.mul(images[:, 0, :, :].unsqueeze(1), weak_labels)
 
-            #weak_labels = (labels > 0.0).to(torch.float32)
-            #weak_labels = torch.mul(images[:, 0, :, :].unsqueeze(1), weak_labels)
-
-            #loss = criterion(torch.sum(outputs, dim=2, keepdim=True), (torch.sum(labels, dim=2, keepdim=True) > 0.2).to(torch.float32))
-            loss = criterion(outputs, labels)
+                loss = criterion(outputs, weak_labels)
+            ########################################################
+            else:
+                loss = criterion(outputs, labels)
 
             loss_temp += loss.item()
 
@@ -124,10 +128,6 @@ def val():
     model.cuda()
     print("Evaluation start")
     model.eval()
-    X_ins = np.zeros((1, input_dim, 256, 256))
-    phases = np.zeros((1, 512, 256))
-    #gts, preds = np.zeros((1, n_classes * angular_resolution, 256, 256)), np.zeros((1, n_classes * angular_resolution, 256, 256))
-    gts, preds = np.zeros((1, n_classes * angular_resolution, 1, 256)), np.zeros((1, n_classes * angular_resolution, 1, 256))
     with torch.no_grad():
         for i, (images, labels, phase) in tqdm(enumerate(val_loader)):
             images = images.cuda()
@@ -139,10 +139,16 @@ def val():
             pred = outputs.data.cpu().numpy()             
             gt = labels.data.cpu().numpy()
             
-            X_ins = np.concatenate((X_ins, X_in), axis=0)
-            phases = np.concatenate((phases, phase), axis=0)
-            preds = np.concatenate((preds, pred[:,:,np.newaxis,:]), axis=0)
-            gts = np.concatenate((gts, gt[:,:,np.newaxis,:]), axis=0)
+            if i == 0:
+                X_ins = X_in
+                phases = phase
+                preds = pred
+                gts = gt
+            else:
+                X_ins = np.concatenate((X_ins, X_in), axis=0)
+                phases = np.concatenate((phases, phase), axis=0)
+                preds = np.concatenate((preds, pred), axis=0)
+                gts = np.concatenate((gts, gt), axis=0)
 
             if task == "cube" and n_classes == 75 and i > 10:
                 break
@@ -150,50 +156,56 @@ def val():
     if task == "sed" or task == "ssl" or task == "seld":
         preds = (preds > 0.5) * 1
         #print(gts.shape, preds.shape)
-        #print(gts[1:].ravel().shape, preds[1:].ravel().shape)
-        f1 = f1_score(gts[1:].ravel(), preds[1:].ravel())
+        #print(gts.ravel().shape, preds.ravel().shape)
+        f1 = f1_score(gts.ravel(), preds.ravel())
         print("F_score", f1)
-        with open(save_dir + "f1_" + str(f1) + ".txt","w") as f:
+        with open(save_dir + "/f1_" + str(f1) + ".txt","w") as f:
             f.write(str(f1))
 
     elif task == "segmentation" or task == "ssls" or task == "cube":
-        scores_array = rmse(gts[1:], preds[1:], classes=n_classes)
+        scores_array = rmse(gts, preds, classes=n_classes)
         save_score_array(scores_array, save_dir)
 
     for n in range(len(preds)):
         if n < 10:
-            plot_mixture_stft(X_ins[1:], no=n, save_dir=save_dir)
+            plot_mixture_stft(X_ins, no=n, save_dir=save_dir)
             if task == "sed" or task == "ssl" or task == "seld":
-                plot_event(gts[1:], preds[1:], no=n, save_dir=save_dir, classes=n_classes, ang_reso=angular_resolution, label=label_csv)
+                plot_event(gts, preds, no=n, save_dir=save_dir, classes=n_classes, ang_reso=angular_resolution, label=label_csv)
 
             elif task == "segmentation" or task == "ssls" or task == "cube":
-                plot_class_stft(gts[1:], preds[1:], no=n, save_dir=save_dir, classes=n_classes, ang_reso=angular_resolution, label=label_csv)
-                restore(gts[1:], preds[1:], phases[1:], no=n, save_dir=save_dir, classes=n_classes, ang_reso=angular_resolution, label=label_csv, dataset_dir=dataset_dir)
+                plot_class_stft(gts, preds, no=n, save_dir=save_dir, classes=n_classes, ang_reso=angular_resolution, label=label_csv)
+                restore(gts, preds, phases, no=n, save_dir=save_dir, classes=n_classes, ang_reso=angular_resolution, label=label_csv, dataset_dir=dataset_dir)
             
 
 if __name__ == '__main__':
     # params for train phase
-    epochs = 5#100
-    batch_size = 64
+    epochs = 100
+    batch_size = 16
     lr = 0.001
     lr_decay = 0.95
     momentum = 0.95
     weight_decay = 5e-4
     
     # dataset
-    n_classes = 75
-    root = "/misc/export3/sudou/sound_data/datasets/"
+    n_classes = 1
+    print(os.getcwd())
+    if os.getcwd() == "/misc/am6data2/user/y.sudo/pytorch_sound":
+        root = "/am6data2/user/y.sudo/dataset/datasets/"
+    elif os.getcwd() == "/misc/export3/sudou/pytorch_sound":
+        root = "/misc/export3/sudou/sound_data/"
+    
     dataset_name = "multi_segdata75_256_-20dB_random_sep_72/"
     dataset_dir = root + dataset_name
     
     label_csv = pd.read_csv(filepath_or_buffer=os.path.join(dataset_dir, "label.csv"), sep=",", index_col=0)
 
-    task = "sed" # "sed", "segmentation", "ssl", "ssls", "cube"
-    model_name = "CRNN_SED" #"Deeplabv3plus"
+    label_type = "supervised"# "weakly"
+    task = "ssls" # "sed", "segmentation", "ssl", "ssls", "cube"
+    model_name = "Deeplabv3plus"
 
     # make save_directory
     date = time.strftime('%Y_%m%d')
-    dirname = date + "_"  + task + "_" + model_name
+    dirname = date + "_" + label_type + "_" + task + "_" + model_name
     save_dir = os.path.join('results', dataset_name, dirname)    
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
@@ -201,7 +213,7 @@ if __name__ == '__main__':
     # sptatial feature type (None, IPD, complex)
     spatial_type = "ipd"
     mic_num = 8
-    angular_resolution = 1#8
+    angular_resolution = 72
     if mic_num == 1:
         input_dim = 1
     elif spatial_type == "ipd":

@@ -113,26 +113,17 @@ class SoundSegmentationDataset(data.Dataset):
                     if self.angular_resolution == 1:
                         if self.task == "sed":
                             label[self.label_csv.T[filename[:-4]][0]] += abs(stft[:256]).max(0)
-                            label = ((label > 0.1) * 1.0)
                             #label[:,np.newaxis,:]
-                            
                         elif self.task == "segmentation":
                             label[self.label_csv.T[filename[:-4]][0]] += abs(stft[:256])                        
-                    
                     else:
                         angle = int(re.sub("\\D", "", direction[direction_index].split("_")[1])) // (360 // self.angular_resolution)
                         if self.task == "ssl":
                             label[angle] += abs(stft[:256]).max(0)
-                            label = ((label > 0.1) * 1.0)
-                            label = label[:,np.newaxis,:]
-                        
                         elif self.task == "ssls":
                             label[angle] += abs(stft[:256])          
-                        
                         elif self.task == "seld":
                             label[self.label_csv.T[filename[:-4]][0]][angle] += abs(stft[:256]).max(0)
-                            label = ((label > 0.1) * 1.0)
-                        
                         elif self.task == "cube":
                             label[self.label_csv.T[filename[:-4]][0]][angle] += abs(stft[:256])
                         direction_index += 1
@@ -141,6 +132,8 @@ class SoundSegmentationDataset(data.Dataset):
             label = label.reshape((self.n_classes * self.angular_resolution, self.freq_bins, self.duration))
                         
         mixture, label = self.normalize(mixture, label)
+        if self.task == "sed" or self.task == "ssl" or self.task == "seld":
+            label = ((label > 0.1) * 1.0)
 
         mixture = torch.from_numpy(mixture).float()
         label = torch.from_numpy(label).float()
